@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Fee Status Search</title>
+    <!-- Tailwind CSS CDN - UI സ്റ്റൈലിംഗിനായി -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom Dark Theme Variables */
+        :root {
+            --background-dark: #1f2937;
+            --text-dark: #f9fafb;
+            --card-dark: #374151;
+            --border-dark: #4b5563;
+            --primary-dark: #60a5fa; /* Tailwind Blue-400 */
+        }
+        /* പൊതുവായ ഡാർക്ക് മോഡ് സ്റ്റൈലുകൾ */
+        html.dark {
+            background-color: var(--background-dark);
+            color: var(--text-dark);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .card {
+            background-color: var(--card-dark);
+            border: 1px solid var(--border-dark);
+        }
+        .btn-primary {
+            background-color: var(--primary-dark);
+            color: #1f2937;
+        }
+        /* സെർച്ച് ബാർ പൊസിഷനിംഗ് */
+        .public-search-container {
+            position: relative;
+        }
+        .clear-search-btn {
+            position: absolute;
+            right: 80px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            z-index: 10;
+        }
+        .search-icon-btn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="app" class="min-h-screen">
+        <!-- Header/Navigation Bar -->
+        <div class="sticky top-0 z-30 card shadow-md rounded-none bg-gray-900">
+            <header class="container mx-auto px-4 py-2 flex justify-between items-center">
+                <!-- App Icon/Title -->
+                <a href="#public" class="p-2 rounded-lg" title="Home">
+                     <!-- ഐക്കൺ SVG -->
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
+                </a>
+           
+                 <!-- ആപ്ലിക്കേഷൻ്റെ പേര് -->
+                <div class="text-center">
+                    <h1 id="app-name-header" class="text-lg font-bold text-white">Public Fee Status</h1>
+                    <p id="app-subtitle-header" class="text-xs opacity-70 text-gray-400">Integrated Version</p>
+                </div>
+           
+                 <!-- അഡ്മിൻ പാനലിലേക്കുള്ള ലിങ്ക് -->
+                <a href="admin_panel.html" class="p-2 rounded-lg text-xs font-bold bg-yellow-600 text-gray-900 hover:bg-yellow-500 transition">
+                     Switch to Admin
+                </a>
+            </header>
+        </div>
+
+        <main class="container mx-auto p-4">
+            <div id="page-content">
+                
+                <!-- 1. PUBLIC VIEW - തിരയാനും സ്റ്റാറ്റസ് കാണാനുമുള്ള സെക്ഷൻ -->
+                <section id="public-page" class="page">
+                    <div class="card p-4 mb-6 rounded-xl shadow-lg">
+                        <h2 class="text-xl font-bold text-indigo-400 mb-4">Search Student Fee Status</h2>
+                        <div class="public-search-container">
+                            <input type="text" id="public-search-input" class="w-full p-3 pr-24 border rounded-md bg-gray-600 border-gray-500 text-lg" placeholder="Type Student Name or R.No.">
+                            
+                            <!-- തിരഞ്ഞത് ക്ലിയർ ചെയ്യാനുള്ള ബട്ടൺ -->
+                            <button id="clear-public-search" class="clear-search-btn text-gray-400 hover:text-white p-1">
+                                <!-- 'X' ഐക്കൺ -->
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                            <!-- സെർച്ച് ബട്ടൺ -->
+                            <button id="search-public-btn" class="search-icon-btn btn-primary px-3 py-1 rounded-lg">
+                                <!-- സെർച്ച് ഐക്കൺ -->
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            </button>
+                            
+                            <!-- സെർച്ച് സജഷൻസ് ഇവിടെ കാണിക്കും -->
+                            <div id="public-suggestions" class="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-500 rounded-md shadow-lg hidden max-h-60 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- തിരഞ്ഞ വിദ്യാർത്ഥിയുടെ വിവരങ്ങൾ ഇവിടെ കാണിക്കും -->
+                    <div id="student-public-view-container" class="space-y-6">
+                        <div class="bg-gray-700 p-6 rounded-xl shadow-lg text-center text-gray-400">
+                             <p>Search for a student above to see their fee status.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        // Firebase മൊഡ്യൂളുകൾ ഇറക്കുമതി ചെയ്യുന്നു
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Configuration (നിങ്ങൾ നൽകിയത്) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyB9f48oJP6e_HkkyD8mgXLofq0S8TMfih0",
+            authDomain: "result-aistudio.firebaseapp.com",
+            projectId: "result-aistudio",
+            storageBucket: "result-aistudio.firebasestorage.app",
+            messagingSenderId: "515968357351",
+            appId: "1:515968357351:web:abed438db3e752375fe342",
+            measurementId: "G-F31CJQC8T7"
+        };
+        
+        // --- ഗ്ലോബൽ സ്റ്റേറ്റ് വേരിയബിളുകൾ ---
+        let students = []; // എല്ലാ വിദ്യാർത്ഥികളുടെയും ലിസ്റ്റ്
+        let payments = []; // എല്ലാ പേയ്മെൻ്റ് വിവരങ്ങളും
+        let feeItems = []; // ഫീസ് ഇനങ്ങളുടെ ലിസ്റ്റ് (മാസങ്ങൾ, കസ്റ്റം ഫീസ്)
+        let selectedStudentId = null; // നിലവിൽ തിരഞ്ഞെടുത്ത വിദ്യാർത്ഥിയുടെ ID
+        let db, auth, userId, appId; // Firebase ഇൻസ്റ്റൻസുകൾ
+        
+        // UI എലമെൻ്റുകൾ വേരിയബിളുകളായി എടുക്കുന്നു
+        const studentPublicViewContainer = document.getElementById('student-public-view-container');
+        const publicSearchInput = document.getElementById('public-search-input');
+        const publicSuggestions = document.getElementById('public-suggestions');
+        const appNameHeader = document.getElementById('app-name-header');
+        const appSubtitleHeader = document.getElementById('app-subtitle-header');
+
+        // ഐഡി ഉപയോഗിച്ച് വിദ്യാർത്ഥിയെ കണ്ടെത്താനുള്ള ഫംഗ്ഷൻ
+        const getStudentById = (id) => students.find(s => s.id === id);
+
+        // --- പൊതുവായ ഫംഗ്ഷനുകൾ ---
+
+        // തിരയൽ ഫലങ്ങൾ അപ്ഡേറ്റ് ചെയ്യാനുള്ള ഫംഗ്ഷൻ
+        const handlePublicSearch = (searchTerm) => { 
+            const lowerCaseSearchTerm = searchTerm.toLowerCase();
+            const filteredStudents = students.filter(s => 
+                // പേര്, റോൾ നമ്പർ, രക്ഷാധികാരിയുടെ പേര് എന്നിവയിൽ തിരയുന്നു
+                s.name.toLowerCase().includes(lowerCaseSearchTerm) || 
+                (s.sno || '').toString().includes(lowerCaseSearchTerm) ||
+                (s.guardian || '').toLowerCase().includes(lowerCaseSearchTerm)
+            ).sort((a, b) => a.sno - b.sno);
+
+            publicSuggestions.innerHTML = '';
+            if (filteredStudents.length > 0 && searchTerm.length > 0) {
+                filteredStudents.forEach(s => {
+                    const div = document.createElement('div');
+                    div.className = 'p-2 hover:bg-gray-600 cursor-pointer';
+                    // സജഷനിൽ വിദ്യാർത്ഥിയുടെ പേര്, രക്ഷാധികാരിയുടെ പേര്, ക്ലാസ് എന്നിവ കാണിക്കുന്നു
+                    div.textContent = `${s.sno}. ${s.name} (${s.guardian || 'N/A'}) - ${s.class}`;
+                    div.dataset.studentId = s.id;
+                    publicSuggestions.appendChild(div);
+                });
+                publicSuggestions.classList.remove('hidden');
+            } else {
+                publicSuggestions.classList.add('hidden');
+            }
+        };
+
+        // തിരഞ്ഞെടുത്ത വിദ്യാർത്ഥിയുടെ ഫീസ് നില പ്രദർശിപ്പിക്കാനുള്ള ഫംഗ്ഷൻ
+        const renderStudentPublicView = (student) => { 
+             if (!student) {
+                 // വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുത്തിട്ടില്ലെങ്കിൽ കാണിക്കുന്ന സന്ദേശം
+                 studentPublicViewContainer.innerHTML = `<div class="bg-gray-700 p-6 rounded-xl shadow-lg text-center text-gray-400"><p>Search for a student above to see their fee status.</p></div>`;
+                 return;
+             }
+
+             // വിദ്യാർത്ഥിയുടെ പേയ്മെൻ്റുകൾ ഫിൽട്ടർ ചെയ്യുന്നു
+             const studentPayments = payments.filter(p => p.studentId === student.id);
+             
+             // മാസം തിരിച്ചുള്ള പേയ്മെൻ്റ് നില തയ്യാറാക്കുന്നു
+             const statusForYear = studentPayments.reduce((acc, p) => {
+                 const item = feeItems.find(i => i.key === p.itemKey);
+                 if (item && item.type === 'month') {
+                     const monthKey = item.key;
+                     // ഏറ്റവും പുതിയ രസീത് നമ്പർ ഉപയോഗിച്ച് അപ്ഡേറ്റ് ചെയ്യുന്നു
+                     if (!acc[monthKey] || acc[monthKey].receipt < p.receiptNo) { 
+                         acc[monthKey] = { paid: true, receipt: p.receiptNo, amount: p.amount };
+                     }
+                 }
+                 return acc;
+             }, {});
+             
+             const currentYear = new Date().getFullYear();
+             
+             // വിദ്യാർത്ഥിയുടെ പ്രധാന വിവരങ്ങൾ
+             const details = `
+                 <div class="bg-indigo-500/10 p-4 rounded-xl shadow-md mb-6 border border-indigo-400/50">
+                     <h3 class="text-xl font-bold text-indigo-400 mb-2">${student.name}</h3>
+                     <p class="text-gray-300">
+                         R.No: ${student.sno || 'N/A'}, Guardian: ${student.guardian || 'N/A'}
+                     </p>
+                     <p class="text-gray-400 text-sm"><span class="font-semibold">Class:</span> ${student.class} | <span class="font-semibold">ID:</span> ${student.id.substring(0, 8)}...</p>
+                 </div>
+             `;
+
+             // മാസം തിരിച്ചുള്ള ഫീസ് സ്റ്റാറ്റസ് ഗ്രിഡ്
+             const monthItems = feeItems.filter(item => item.type === 'month' && item.isVisible);
+
+             const feeStatus = `
+                 <div class="card p-4 sm:p-6 rounded-xl shadow-lg">
+                     <h3 class="text-2xl font-bold mb-4 text-white">Payment Status for ${currentYear}</h3>
+                     
+                     <div class="flex flex-wrap gap-3 justify-start">
+                         ${monthItems.map(item => {
+                             const status = statusForYear[item.key];
+                             const isPaid = status && status.paid;
+                             const receiptNo = status ? status.receipt : 'N/A';
+                             
+                             const bgColor = isPaid ? 'bg-green-800 border-green-500' : 'bg-red-800 border-red-500'; // പച്ച - അടച്ചത്, ചുവപ്പ് - അടയ്ക്കാനുള്ളത്
+                             const textColor = isPaid ? 'text-green-300' : 'text-red-300';
+                             
+                             return `
+                                 <div class="w-[calc(50%-6px)] sm:w-[calc(33.33%-8px)] md:w-[calc(25%-9px)] lg:w-[calc(16.66%-10px)] p-1 transition-all duration-300">
+                                     <div class="rounded-lg border-2 ${bgColor} p-3 text-center shadow-sm h-full">
+                                         <div class="text-xs font-bold ${textColor} mb-1">${item.name}</div>
+                                         ${isPaid 
+                                             ? `<div class="text-xs font-semibold text-green-400">PAID</div>
+                                                <div class="text-[10px] text-gray-400 mt-1">R: ${receiptNo}</div>` // രസീത് നമ്പർ
+                                             : `<div class="text-xs font-semibold text-red-400">DUE</div>`
+                                         }
+                                     </div>
+                                 </div>
+                             `;
+                         }).join('')}
+                     </div>
+                 </div>
+             `;
+             studentPublicViewContainer.innerHTML = `<div class="max-w-xl mx-auto">${details}${feeStatus}</div>`;
+        };
+
+        // --- ഇവൻ്റ് ലിസണറുകൾ ---
+        publicSearchInput.addEventListener('input', (e) => handlePublicSearch(e.target.value.trim()));
+        
+        document.getElementById('clear-public-search').addEventListener('click', () => {
+             publicSearchInput.value = '';
+             publicSearchInput.focus();
+             publicSuggestions.classList.add('hidden');
+             renderStudentPublicView(null);
+        });
+        
+        document.getElementById('search-public-btn').addEventListener('click', () => {
+            const searchTerm = publicSearchInput.value.trim();
+            const suggestions = publicSuggestions.querySelectorAll('div');
+            
+            if (suggestions.length === 1) { // ഒരൊറ്റ സജഷൻ ഉണ്ടെങ്കിൽ അത് തിരഞ്ഞെടുക്കുന്നു
+                suggestions[0].click();
+            } else if (!searchTerm) {
+                renderStudentPublicView(null);
+            }
+        });
+
+        publicSuggestions.addEventListener('click', (e) => {
+            if (e.target.dataset.studentId) {
+                selectedStudentId = e.target.dataset.studentId;
+                const student = getStudentById(selectedStudentId);
+                if(student) {
+                    publicSearchInput.value = `${student.sno}. ${student.name}`;
+                    renderStudentPublicView(student);
+                }
+                publicSuggestions.classList.add('hidden');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+             // സെർച്ച് ബോക്സിനു പുറത്ത് ക്ലിക്കു ചെയ്യുമ്പോൾ സജഷനുകൾ മറയ്ക്കുന്നു
+             if (!e.target.closest('.public-search-container')) {
+                publicSuggestions.classList.add('hidden');
+             }
+        });
+
+
+        // --- Firebase Initialization & Data Listeners (READ ONLY) ---
+        async function main() {
+            // Firebase Config ഇവിടെ നേരിട്ട് നൽകിയിരിക്കുന്നു
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+            // ആധികാരികത ഉറപ്പുവരുത്തൽ (Authentication) - വായനാ ആവശ്യങ്ങൾക്ക്
+            if (typeof __initial_auth_token !== 'undefined') {
+                 await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                 await signInAnonymously(auth); // അജ്ഞാത ഉപയോക്താവായി സൈൻ ഇൻ ചെയ്യുന്നു
+            }
+
+            onAuthStateChanged(auth, async (user) => {
+                 if (user) {
+                     userId = user.uid; 
+                     
+                     // 1. Settings Listener (റീഡ് മാത്രം) - ആപ്ലിക്കേഷൻ്റെ പേര്, ഫീസ് ഇനങ്ങൾ എന്നിവയ്ക്കായി
+                     const settingsRef = doc(db, `artifacts/${appId}/users/${userId}/settings`, 'config');
+                     const settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
+                          if (docSnap.exists()) {
+                              const data = docSnap.data();
+                              appName = data.appName || 'Public Fee Status';
+                              appSubtitle = data.appSubtitle || 'Integrated Version';
+                              feeItems = data.feeItems || [];
+                          } 
+                          appNameHeader.textContent = appName;
+                          appSubtitleHeader.textContent = appSubtitle;
+                          if (selectedStudentId) renderStudentPublicView(getStudentById(selectedStudentId));
+                      });
+
+                     // 2. Students Listener (റീഡ് മാത്രം) - വിദ്യാർത്ഥികളുടെ വിവരങ്ങൾക്കായി
+                     const studentsQuery = collection(db, `artifacts/${appId}/users/${userId}/students`);
+                     const studentsUnsubscribe = onSnapshot(studentsQuery, (snapshot) => {
+                         students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                         if (selectedStudentId) renderStudentPublicView(getStudentById(selectedStudentId));
+                     });
+
+                     // 3. Payments Listener (റീഡ് മാത്രം) - പേയ്മെൻ്റ് വിവരങ്ങൾക്കായി
+                     const paymentsQuery = collection(db, `artifacts/${appId}/users/${userId}/payments`);
+                     const paymentsUnsubscribe = onSnapshot(paymentsQuery, (snapshot) => {
+                         payments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                         if (selectedStudentId) renderStudentPublicView(getStudentById(selectedStudentId));
+                     });
+                     
+                     // പേജ് ലോഡ് ചെയ്യുമ്പോൾ ഡിഫോൾട്ട് വ്യൂ റെൻഡർ ചെയ്യുന്നു
+                     renderStudentPublicView(null);
+                 }
+            });
+        }
+        
+        main();
+    </script>
+</body>
+</html>
