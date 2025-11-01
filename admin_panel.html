@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Fee Management</title>
+    <!-- Tailwind CSS CDN - UI സ്റ്റൈലിംഗിനായി -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- jspdf for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <!-- SortableJS for drag-and-drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+        /* Custom Dark Theme Variables */
+        :root {
+            --background-dark: #1f2937;
+            --text-dark: #f9fafb;
+            --card-dark: #374151;
+            --border-dark: #4b5563;
+            --primary-dark: #60a5fa; /* Tailwind Blue-400 */
+            --edit-mode-border: #facc15; /* Tailwind Yellow-400 */
+            --header-bg: #111827;
+        }
+        /* പൊതുവായ ഡാർക്ക് മോഡ് സ്റ്റൈലുകൾ */
+        html.dark {
+            background-color: var(--background-dark);
+            color: var(--text-dark);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .card {
+            background-color: var(--card-dark);
+            border: 1px solid var(--border-dark);
+        }
+        /* പ്രൈമറി ബട്ടൺ സ്റ്റൈൽ */
+        .btn-primary {
+            background-color: var(--primary-dark);
+            color: #1f2937;
+        }
+        .btn-primary:disabled {
+            background-color: #4b5563;
+            cursor: not-allowed;
+        }
+        .table-header {
+            background-color: #4b5563;
+        }
+        .popup-overlay {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        /* ഫീസ് ഇനം സെലക്ഷനുള്ള സ്റ്റൈലുകൾ */
+        .fee-item-checkbox:checked + label {
+            background-color: #3b82f6 !important;
+            border-color: #2563eb !important;
+            color: white !important;
+        }
+        .fee-item-checkbox:disabled + label {
+            background-color: #059669 !important; /* paid but not editable */
+            border-color: #047857 !important;
+            color: white !important;
+            cursor: not-allowed;
+        }
+        .month-paid {
+            background-color: #16a34a !important; /* അടച്ച മാസം */
+            color: #d1d5db !important;
+            border-color: #15803d !important;
+            cursor: not-allowed;
+        }
+        .month-editable {
+            cursor: pointer !important;
+            border: 2px solid var(--edit-mode-border) !important;
+        }
+        /* എഡിറ്റ് മോഡ് ആക്ടീവ് ആയിരിക്കുമ്പോൾ കാണിക്കുന്ന ബോർഡർ */
+        .edit-mode-active #admin-panel-container {
+             border: 2px solid var(--edit-mode-border);
+             box-shadow: 0 0 15px rgba(250, 204, 21, 0.5);
+        }
+        /* നാവിഗേഷൻ സ്റ്റൈലുകൾ */
+        .main-nav-item.active {
+            color: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+        .settings-tab-btn.active {
+            background-color: var(--primary-dark);
+            color: var(--background-dark);
+        }
+        /* ലോഡിംഗ് സ്പിന്നർ */
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* ഡ്രാഗ് ഹാൻഡിൽ സ്റ്റൈലുകൾ */
+        .drag-handle {
+            cursor: grab;
+        }
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="app" class="min-h-screen">
+        <!-- ഹെഡർ/നാവിഗേഷൻ ബാർ -->
+        <div class="sticky top-0 z-30 card shadow-md rounded-none bg-gray-900">
+            <header class="container mx-auto px-4 py-2 flex justify-between items-center">
+                <!-- App Icon/Link -->
+                <a href="#fee-entry" id="home-link" class="p-2 rounded-lg" title="Home">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
+                </a>
+           
+                 <!-- ആപ്ലിക്കേഷൻ്റെ പേര് -->
+                <div class="text-center">
+                    <h1 id="app-name-header" class="text-lg font-bold text-white">Admin Panel - Fee Management</h1>
+                    <p id="app-subtitle-header" class="text-xs opacity-70 text-gray-400">Integrated Version</p>
+                </div>
+           
+                 <!-- പബ്ലിക് വ്യൂവിലേക്കുള്ള ലിങ്ക് -->
+                <a href="public_fee_status.html" class="p-2 rounded-lg text-xs font-bold bg-yellow-600 text-gray-900 hover:bg-yellow-500 transition">
+                     Switch to Public View
+                </a>
+            </header>
+        
+            <!-- Admin നാവിഗേഷൻ ബാർ -->
+            <div id="admin-nav-bar" class="border-t border-gray-800">
+                <nav id="admin-main-nav" class="flex items-center justify-around text-gray-300">
+                    <!-- Nav links JS വഴി ലോഡ് ചെയ്യും -->
+                </nav>
+            </div>
+        </div>
+
+        <main class="container mx-auto p-4">
+            <div id="page-content">
+                
+                <!-- 2. ADMIN PANEL - എല്ലാ അഡ്മിൻ ഫംഗ്ഷനുകളും അടങ്ങിയ കണ്ടെയ്‌നർ -->
+                <section id="admin-panel" class="page">
+                    <div id="admin-nav-tabs" class="card rounded-xl shadow-lg mb-4">
+                        <div id="admin-main-nav" class="flex flex-wrap justify-around p-1 border-b border-gray-700">
+                             <!-- Admin Tabs will be managed dynamically here -->
+                        </div>
+                    </div>
+                    
+                    <div id="admin-content-area">
+                        <!-- 2.1 Fee Entry (ഡിഫോൾട്ട് അഡ്മിൻ ടാബ്) -->
+                        <section id="fee-entry-page" class="admin-tab-content">
+                            <div id="admin-panel-container" class="card p-4 mb-6 rounded-xl shadow-lg transition-all duration-300">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 id="fee-entry-title" class="text-xl font-bold text-indigo-400">Fee Entry</h2>
+                                    <!-- ഗ്രൂപ്പ് ഫീ വിവരങ്ങൾ കാണിക്കുന്ന സ്ഥലം -->
+                                    <p id="group-info" class="text-xs text-yellow-400 hidden"></p>
+                                </div>
+                                <div class="space-y-4">
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <!-- ക്ലാസ് സെലക്ഷൻ -->
+                                        <div>
+                                            <label for="entry-class" class="block text-sm font-medium mb-1">Class</label>
+                                            <select id="entry-class" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></select>
+                                        </div>
+                                        <!-- വിദ്യാർത്ഥി തിരയൽ/സെലക്ഷൻ -->
+                                        <div>
+                                            <label for="entry-student-input" class="block text-sm font-medium mb-1">Student</label>
+                                            <div class="relative" id="admin-student-combobox-container">
+                                                <input type="text" id="admin-entry-student-input" class="w-full p-2 pr-10 border rounded-md bg-gray-600 border-gray-500" placeholder="Type to search for student (R.No, Name)">
+                                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                </div>
+                                                <!-- സജഷനുകൾ ഇവിടെ കാണിക്കും -->
+                                                <div id="admin-student-suggestions" class="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-500 rounded-md shadow-lg hidden max-h-60 overflow-y-auto"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <!-- രസീത് നമ്പർ -->
+                                        <div>
+                                            <label for="entry-receipt" class="block text-sm font-medium mb-1">Receipt No.</label>
+                                            <input type="number" id="entry-receipt" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500">
+                                        </div>
+                                        <!-- തീയതി -->
+                                        <div>
+                                            <label for="entry-date" class="block text-sm font-medium mb-1">Date</label>
+                                            <input type="date" id="entry-date" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500">
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- ഫീസ് ഇനം സെലക്ഷൻ ഗ്രിഡ് -->
+                                <div class="mt-6">
+                                    <label class="block text-sm font-medium mb-2">Fee Item</label>
+                                    <div id="fee-item-selection-container" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mt-2"></div>
+                                </div>
+                                <!-- വിവരണം -->
+                                <div class="mt-4">
+                                    <label for="entry-description" class="block text-sm font-medium mb-1">Description</label>
+                                    <textarea id="entry-description" rows="2" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500" placeholder="Optional notes..."></textarea>
+                                </div>
+                                <!-- ആകെ തുകയും സേവ്/അപ്ഡേറ്റ് ബട്ടണുകളും -->
+                                <div class="mt-6 flex justify-between items-center border-t border-gray-700 pt-4">
+                                    <div>
+                                        <label for="total-amount" class="block text-sm font-medium text-yellow-400">Total Amount (₹)</label>
+                                        <input type="number" id="total-amount" readonly class="p-2 w-32 rounded-md bg-gray-800 border-yellow-500 border-2 font-bold text-lg text-yellow-300">
+                                    </div>
+                                    <div id="action-buttons-container" class="flex gap-2">
+                                        <button id="cancel-edit-btn" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-600 transition hidden"><span>Cancel</span></button>
+                                        <button id="update-fee-btn" class="bg-yellow-500 text-black font-bold py-2 px-6 rounded-lg shadow-md hover:bg-yellow-600 transition hidden"><span>Update</span></button>
+                                        <button id="save-fee-btn" class="btn-primary font-bold py-2 px-6 rounded-lg shadow-md hover:bg-blue-500 transition"><span>Save</span></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- 2.2 FEE Status Table Page (ഫീസ് നില പട്ടിക) -->
+                        <section id="fee-status-page" class="admin-tab-content hidden">
+                            <div class="card p-4 mb-6 rounded-xl shadow-lg">
+                                <!-- ഫിൽട്ടറുകൾ -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><label for="filter-class" class="block text-sm font-medium mb-1">Class</label><select id="filter-class" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></select></div>
+                                    <div><label for="filter-gender" class="block text-sm font-medium mb-1">Gender</label><select id="filter-gender" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"><option value="all">All Genders</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                                </div>
+                            </div>
+                            <div class="card p-4 rounded-xl shadow-lg">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 id="fee-status-title-header" class="text-xl font-bold text-white">Fee Status</h2>
+                                    <!-- PDF ഡൗൺലോഡ് ബട്ടൺ -->
+                                    <div class="flex justify-end items-center gap-2">
+                                        <button id="fee-download-pdf-btn" class="p-2 rounded-md bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-blue-500" title="Download PDF">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- ഫീസ് പട്ടിക ഇവിടെ റെൻഡർ ചെയ്യും -->
+                                <div id="fee-table-container" class="overflow-x-auto"></div>
+                            </div>
+                        </section>
+
+                        <!-- 2.3 Recent Payments (HISTORY) Page -->
+                        <section id="history-page" class="admin-tab-content hidden">
+                             <div class="card p-4 rounded-xl shadow-lg">
+                                 <div class="flex justify-between items-center mb-4">
+                                     <h2 class="text-xl font-bold text-yellow-400">Payment History</h2>
+                                 </div>
+                                 <!-- പേയ്മെൻ്റ് ചരിത്ര പട്ടിക ഇവിടെ റെൻഡർ ചെയ്യും -->
+                                 <div id="history-content-container" class="overflow-x-auto"></div>
+                             </div>
+                        </section>
+
+                        <!-- 2.4 Settings/Management Panel -->
+                        <section id="settings-page" class="admin-tab-content hidden">
+                             <div class="card rounded-xl shadow-lg mb-4">
+                                 <!-- Settings Tab Navigation -->
+                                 <div id="settings-nav" class="flex flex-wrap justify-around p-1 border-b border-gray-700">
+                                     <!-- Settings Sub-Tabs ഇവിടെ JS വഴി ലോഡ് ചെയ്യും -->
+                                     <button class="settings-tab-btn active flex-grow p-3 text-xs sm:text-sm font-medium rounded-t-lg" data-target="general-settings-content"><span>General</span></button>
+                                     <button class="settings-tab-btn flex-grow p-3 text-xs sm:text-sm font-medium rounded-t-lg" data-target="manage-fee-items-content"><span>Fee Items</span></button>
+                                     <button class="settings-tab-btn flex-grow p-3 text-xs sm:text-sm font-medium rounded-t-lg" data-target="manage-students-content"><span>Students</span></button>
+                                     <button class="settings-tab-btn flex-grow p-3 text-xs sm:text-sm font-medium rounded-t-lg" data-target="add-students-content"><span>Add Students</span></button>
+                                     <button class="settings-tab-btn flex-grow p-3 text-xs sm:text-sm font-medium rounded-t-lg" data-target="manage-groups-content"><span>Groups</span></button>
+                                     <button class="settings-tab-btn flex-grow p-3 text-xs sm:text-sm font-medium rounded-t-lg" data-target="manage-classes-content"><span>Classes</span></button>
+                                 </div>
+                             </div>
+                        
+                            <!-- General Settings Content -->
+                            <div id="general-settings-content" class="settings-tab-content">
+                                <div class="card p-4 rounded-xl shadow-lg">
+                                    <h2 class="text-lg font-semibold mb-4 text-indigo-400">General Settings</h2>
+                                    <!-- ആപ്പ് വിവരങ്ങൾ എഡിറ്റ് ചെയ്യാനുള്ള ഇൻപുട്ടുകൾ -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><label for="app-name-input" class="block text-sm font-medium mb-1">App Name</label><input type="text" id="app-name-input" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></div>
+                                        <div><label for="app-subtitle-input" class="block text-sm font-medium mb-1">App Subtitle</label><input type="text" id="app-subtitle-input" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></div>
+                                        <div><label for="default-fee-input" class="block text-sm font-medium mb-1">Default Monthly Fee (₹)</label><input type="number" id="default-fee-input" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></div>
+                                        <div><label for="fee-status-title-input" class="block text-sm font-medium mb-1">Fee Status Title</label><input type="text" id="fee-status-title-input" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></div>
+                                    </div>
+                                    <div class="mt-6 text-right">
+                                        <button id="save-general-settings-btn" class="btn-primary font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-500 transition flex items-center gap-2 ml-auto">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                                            <span>Save General Settings</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                            <!-- Manage Fee Items Content -->
+                            <div id="manage-fee-items-content" class="settings-tab-content hidden">
+                                <div class="card p-4 rounded-xl shadow-lg">
+                                    <h2 class="text-lg font-semibold mb-4 text-green-400">Manage Fee Items</h2>
+                                    <p class="text-sm text-gray-400 mb-4">Drag to reorder.</p>
+                                    <!-- നിലവിലെ ഫീസ് ഇനങ്ങൾ ഇവിടെ ലിസ്റ്റ് ചെയ്യും (ഡ്രാഗ് ചെയ്യാനുള്ള സൗകര്യത്തോടെ) -->
+                                    <div id="fee-items-management-container" class="space-y-2 mb-4"></div>
+                                    <!-- പുതിയ കസ്റ്റം ഫീസ് ചേർക്കാനുള്ള ഇൻപുട്ട് -->
+                                    <div class="flex items-center gap-2 mt-4 border-t border-gray-700 pt-4">
+                                        <input type="text" id="new-custom-fee-input" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500" placeholder="New Fee Item Name">
+                                        <button id="add-custom-fee-btn" class="btn-primary font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-500 transition">
+                                            <span>Add</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Manage Students Content (വിദ്യാർത്ഥികളെ എഡിറ്റ്/ഡിലീറ്റ് ചെയ്യാൻ) -->
+                            <div id="manage-students-content" class="settings-tab-content hidden">
+                                <div class="card p-4 rounded-xl shadow-lg">
+                                    <h2 class="text-lg font-semibold mb-4 text-yellow-400">Manage Students</h2>
+                                    <!-- വിദ്യാർത്ഥികളെ തിരയാനുള്ള സെർച്ച് ബോക്സ് -->
+                                    <div class="relative mb-4">
+                                        <input type="text" id="search-student-input" placeholder="Search for a student to edit or delete" class="w-full p-2 pl-10 border rounded-md bg-gray-600 border-gray-500">
+                                        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                    </div>
+                                    <!-- വിദ്യാർത്ഥികളുടെ ലിസ്റ്റ് ഇവിടെ റെൻഡർ ചെയ്യും -->
+                                    <div id="student-list-container" class="overflow-x-auto"></div>
+                                </div>
+                            </div>
+                        
+                            <!-- Add Students Content (വിദ്യാർത്ഥികളെ ചേർക്കാൻ) -->
+                            <section id="add-students-content" class="settings-tab-content hidden">
+                                <div class="card p-4 mb-6 rounded-xl shadow-lg">
+                                    <h2 class="text-lg font-semibold mb-4 text-indigo-400">Add Students</h2>
+                                    <!-- സിംഗിൾ എൻട്രി -->
+                                    <div class="border border-indigo-500 rounded-lg p-4 mb-6 bg-indigo-900/20">
+                                        <h3 class="text-md font-bold mb-3 text-indigo-300">Single Student Entry</h3>
+                                        <div class="space-y-3">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div><label for="add-student-class-single" class="block text-sm font-medium mb-1">Class</label><input type="text" id="add-student-class-single" placeholder="Enter Class" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></div>
+                                                <div><label for="add-student-gender-single" class="block text-sm font-medium mb-1">Gender</label><select id="add-student-gender-single" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                                            </div>
+                                            <input type="text" id="add-student-name-single" placeholder="Enter full name" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500">
+                                            <input type="text" id="add-student-guardian-single" placeholder="Enter Guardian Name" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500">
+                                            <input type="number" id="add-student-sno-single" placeholder="Enter R.No. (Roll Number)" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500">
+                                            <button id="add-single-student-btn" class="btn-primary font-bold py-2 px-3 text-sm rounded-lg shadow-md hover:bg-blue-500 transition w-full"><span>Add New Student</span></button>
+                                        </div>
+                                    </div>
+                                    <!-- ബൾക്ക് എൻട്രി -->
+                                    <div class="border border-green-500 rounded-lg p-4 bg-green-900/20">
+                                        <h3 class="text-md font-bold mb-3 text-green-300">Bulk Add Students</h3>
+                                        <div class="space-y-4">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div><label for="add-student-class-bulk" class="block text-sm font-medium mb-1">Class</label><input type="text" id="add-student-class-bulk" placeholder="Enter Class" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></div>
+                                                <div><label for="add-student-gender-bulk" class="block text-sm font-medium mb-1">Gender</label><select id="add-student-gender-bulk" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                                            </div>
+                                            <div>
+                                                <label for="add-multiple-names" class="block text-sm font-medium mb-1">Student Names (Name, Guardian - one set per line)</label>
+                                                <textarea id="add-multiple-names" rows="8" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500" placeholder="Enter one full name and guardian per line (e.g., John Doe, Jane Doe)"></textarea>
+                                                <p class="text-xs text-gray-400 mt-1">Roll Numbers (R.No.) will be automatically assigned starting from the next available number in the selected Class/Gender.</p>
+                                            </div>
+                                            <div class="mt-4 flex justify-end">
+                                                <button id="add-multiple-students-btn" class="btn-primary font-bold py-2 px-3 text-sm rounded-lg shadow-md hover:bg-blue-500 transition flex items-center justify-center gap-2">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                                                    <span>Add Students</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        
+                            <!-- Manage Student Groups Content (ഗ്രൂപ്പുകൾ കൈകാര്യം ചെയ്യാൻ) -->
+                            <div id="manage-groups-content" class="settings-tab-content hidden space-y-4">
+                                <div class="card p-4 rounded-xl shadow-lg">
+                                    <h2 class="text-lg font-semibold mb-4 text-pink-400">Manage Student Groups</h2>
+                                    <p class="text-sm text-gray-400 mb-4">Group students together. When one student in a group pays, the fee is automatically recorded for all members of the group.</p>
+                                    
+                                    <div class="space-y-4 border border-pink-700/50 p-3 rounded-lg">
+                                        <h3 class="text-md font-bold mb-3 text-pink-300">Create New Group</h3>
+                                        <div><label for="num-of-students-group" class="block text-sm font-medium mb-1">Number of Students to Group</label><input type="number" id="num-of-students-group" min="2" class="w-full md:w-1/4 p-2 border rounded-md bg-gray-600 border-gray-500" placeholder="e.g., 2"></div>
+                                        <div id="group-creation-container" class="space-y-4"></div>
+                                        <div id="create-group-btn-container" class="text-right hidden pt-4 border-t border-gray-700"><button id="create-group-btn" class="bg-pink-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-pink-700 transition"><span>Create Group</span></button></div>
+                                    </div>
+                                </div>
+                        
+                                <div class="card p-4 rounded-lg shadow-lg">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h2 class="text-lg font-semibold text-pink-400">Existing Groups</h2>
+                                        <div id="save-group-fees-container" class="hidden"><button id="save-group-fees-btn" class="btn-primary font-bold py-2 px-4 text-sm rounded-lg shadow-md hover:bg-blue-500 transition flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg><span>Save Fees</span></button></div>
+                                    </div>
+                                    <div id="student-groups-list" class="space-y-3"></div>
+                                </div>
+                            </div>
+                        
+                            <!-- Manage Classes Content (ക്ലാസ്സുകൾ പ്രൊമോട്ട് ചെയ്യാൻ/മാറ്റാൻ) -->
+                            <div id="manage-classes-content" class="settings-tab-content hidden space-y-6">
+                                <div class="card p-4 rounded-lg shadow-lg">
+                                    <h2 class="text-lg font-semibold mb-4 text-orange-400">Manage Classes</h2>
+                                    <!-- നിലവിലെ ക്ലാസ്സുകളുടെ ലിസ്റ്റ് -->
+                                    <div id="class-list-container" class="space-y-2"></div>
+                                </div>
+                            
+                                <div class="card p-4 rounded-lg shadow-lg">
+                                    <h2 class="text-lg font-semibold mb-4 text-orange-400">Bulk Class Actions</h2>
+                                    
+                                    <!-- പ്രൊമോട്ട് ഓൾ ബട്ടൺ -->
+                                    <div class="border-b border-gray-700 pb-4 mb-4">
+                                        <h3 class="font-semibold mb-2 text-white">Promote All Students</h3>
+                                        <p class="text-sm text-gray-400 mb-4">Automatically promotes all classes with a number in their name to the next number (e.g., Class '9 A' becomes '10 A'). This affects all students. This action is irreversible.</p>
+                                        <button id="promote-all-btn" class="bg-orange-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-orange-600 transition"><span>Promote All to Next Year</span></button>
+                                    </div>
+                                    
+                                    <!-- വിദ്യാർത്ഥികളെ ക്ലാസ് മാറ്റാനുള്ള ഓപ്ഷൻ -->
+                                    <div>
+                                        <h3 class="font-semibold mb-2 text-white">Move Students to New Division</h3>
+                                        <p class="text-sm text-gray-400 mb-4">Select a class, choose specific students, and move them to a new division.</p>
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                                            <div><label for="move-from-class" class="block text-sm font-medium mb-1">From Class</label><select id="move-from-class" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"><option value="">Select a Class</option></select></div>
+                                        </div>
+                                        
+                                        <div id="move-student-list-container" class="mt-4 space-y-2 max-h-72 overflow-y-auto border border-gray-600 rounded-md p-2 hidden"></div>
+                                        
+                                        <div class="text-right mt-4"><button id="move-selected-students-btn" class="btn-primary font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed"><span>Move Selected Students</span></button></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Confirmation Modal (സ്ഥിരീകരണ വിൻഡോ) -->
+    <div id="confirm-popup" class="fixed inset-0 popup-overlay items-center justify-center hidden z-50">
+        <div class="card rounded-xl shadow-2xl p-6 w-full max-w-md mx-auto transform transition-all duration-300 scale-100">
+            <h3 class="text-xl font-bold mb-4 text-indigo-400" id="confirm-title">Confirm</h3>
+            <div id="confirm-message" class="mb-6 text-left max-h-80 overflow-y-auto text-gray-300"></div>
+            <div class="flex justify-end gap-4">
+                <button id="confirm-cancel" class="px-4 py-2 rounded-lg bg-gray-500 hover:bg-gray-600 transition flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <span>Cancel</span>
+                </button>
+                <button id="confirm-ok" class="btn-primary px-4 py-2 rounded-lg shadow hover:bg-blue-500 transition flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Student Modal (വിദ്യാർത്ഥികളെ എഡിറ്റ് ചെയ്യാനുള്ള വിൻഡോ) -->
+    <div id="edit-student-popup" class="fixed inset-0 popup-overlay items-center justify-center hidden z-50">
+        <div class="card rounded-xl shadow-2xl p-6 w-full max-w-md mx-auto">
+            <h3 class="text-xl font-bold mb-4 text-yellow-400">Edit Student</h3>
+            <div class="space-y-4">
+                <div><label for="edit-student-name" class="block text-sm font-medium mb-1">Student Name</label><input type="text" id="edit-student-name" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></div>
+                <div><label for="edit-student-guardian" class="block text-sm font-medium mb-1">Guardian Name</label><input type="text" id="edit-student-guardian" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label for="edit-student-class" class="block text-sm font-medium mb-1">Class</label><input type="text" id="edit-student-class" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></div>
+                    <div><label for="edit-student-gender" class="block text-sm font-medium mb-1">Gender</label><select id="edit-student-gender" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                </div>
+                <div><label for="edit-student-sno" class="block text-sm font-medium mb-1">R.No. (Roll No.)</label><input type="number" id="edit-student-sno" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></div>
+            </div>
+            <div class="flex justify-end gap-4 mt-6">
+                <button id="edit-student-cancel" class="px-4 py-2 rounded-lg bg-gray-500 hover:bg-gray-600 transition"><span>Cancel</span></button>
+                <button id="edit-student-update" class="btn-primary px-4 py-2 rounded-lg shadow hover:bg-blue-500 transition">Update</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Class Modal (ക്ലാസ് എഡിറ്റ് ചെയ്യാനുള്ള വിൻഡോ) -->
+    <div id="edit-class-popup" class="fixed inset-0 popup-overlay items-center justify-center hidden z-50">
+        <div class="card rounded-lg shadow-2xl p-6 w-full max-w-sm mx-auto">
+            <h3 class="text-lg font-bold mb-4 text-orange-400">Edit Class</h3>
+            <div class="space-y-2">
+                <div><label for="edit-class-name" class="block text-sm font-medium mb-1">Class Name</label><input type="text" id="edit-class-name" class="w-full p-2 border rounded-md bg-gray-600 border-gray-500"></div>
+            </div>
+            <div class="flex justify-end gap-4 mt-6">
+                <button id="edit-class-cancel" class="px-4 py-2 rounded-lg bg-gray-500 hover:bg-gray-600 transition"><span>Cancel</span></button>
+                <button id="edit-class-update" class="btn-primary px-4 py-2 rounded-lg shadow hover:bg-blue-500 transition">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase മൊഡ്യൂളുകൾ ഇറക്കുമതി ചെയ്യുന്നു
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, query, where, writeBatch, getDocs, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Configuration (നിങ്ങൾ നൽകിയത്) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyB9f48oJP6e_HkkyD8mgXLofq0S8TMfih0",
+            authDomain: "result-aistudio.firebaseapp.com",
+            projectId: "result-aistudio",
+            storageBucket: "result-aistudio.firebasestorage.app",
+            messagingSenderId: "515968357351",
+            appId: "1:515968357351:web:abed438db3e752375fe342",
+            measurementId: "G-F31CJQC8T7"
+        };
+
+        // --- ഗ്ലോബൽ സ്റ്റേറ്റ് വേരിയബിളുകൾ ---
+        let students = []; // എല്ലാ വിദ്യാർത്ഥികളുടെയും ലിസ്റ്റ്
+        let payments = []; // എല്ലാ പേയ്മെൻ്റ് വിവരങ്ങളും
+        let classes = []; // നിലവിലെ ക്ലാസ്സുകൾ
+        let studentGroups = []; // വിദ്യാർത്ഥി ഗ്രൂപ്പുകൾ
+        let feeItems = []; // ഫീസ് ഇനങ്ങളുടെ ലിസ്റ്റ് (മാസങ്ങൾ, കസ്റ്റം ഫീസ്)
+        let defaultFee = 200; // ഡിഫോൾട്ട് പ്രതിമാസ ഫീസ്
+        let appName = 'Admin Panel - Fee Management';
+        let appSubtitle = 'Integrated Version';
+        let feeStatusTitle = '';
+        let nextReceiptNo = 1; // അടുത്ത രസീത് നമ്പർ
+        let isEditMode = false; // എഡിറ്റിംഗ് മോഡ് ഓൺ/ഓഫ് സ്റ്റാറ്റസ്
+        let editingPaymentGroup = {}; // എഡിറ്റ് ചെയ്യുന്ന പേയ്മെൻ്റിൻ്റെ വിവരങ്ങൾ
+        let editingStudentId = null; 
+        let selectedStudentId = null; // നിലവിൽ തിരഞ്ഞെടുത്ത വിദ്യാർത്ഥിയുടെ ID
+        let editingClassName = null;
+        
+        let db, auth, userId, appId; // Firebase ഇൻസ്റ്റൻസുകൾ
+        
+        const getStudentById = (id) => students.find(s => s.id === id); // ID ഉപയോഗിച്ച് വിദ്യാർത്ഥിയെ കണ്ടെത്തുന്നു
+
+        // --- UI എലമെൻ്റുകൾ വേരിയബിളുകളായി എടുക്കുന്നു ---
+        const appContainer = document.getElementById('app');
+        const adminMainNav = document.getElementById('admin-main-nav');
+        const adminTabContents = document.querySelectorAll('.admin-tab-content');
+        const entryClass = document.getElementById('entry-class');
+        const adminEntryStudentInput = document.getElementById('admin-entry-student-input');
+        const adminStudentSuggestions = document.getElementById('admin-student-suggestions');
+        const entryReceipt = document.getElementById('entry-receipt');
+        const entryDate = document.getElementById('entry-date');
+        const feeItemSelectionContainer = document.getElementById('fee-item-selection-container');
+        const saveFeeBtn = document.getElementById('save-fee-btn');
+        const updateFeeBtn = document.getElementById('update-fee-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const totalAmountInput = document.getElementById('total-amount');
+        const feeEntryTitle = document.getElementById('fee-entry-title');
+        const groupInfo = document.getElementById('group-info');
+        const filterClass = document.getElementById('filter-class');
+        const filterGender = document.getElementById('filter-gender');
+        const feeTableContainer = document.getElementById('fee-table-container');
+        const historyContentContainer = document.getElementById('history-content-container');
+        const settingsNav = document.getElementById('settings-nav');
+        const settingsTabContents = document.querySelectorAll('.settings-tab-content');
+        const studentListContainer = document.getElementById('student-list-container');
+        const searchStudentInput = document.getElementById('search-student-input');
+        const feeItemsManagementContainer = document.getElementById('fee-items-management-container');
+        const classListContainer = document.getElementById('class-list-container'); 
+        const confirmPopup = document.getElementById('confirm-popup');
+        const confirmOk = document.getElementById('confirm-ok');
+
+
+        // --- അഡ്മിൻ നാവിഗേഷൻ സജ്ജമാക്കുന്നു ---
+        const initAdminNav = () => {
+            const navItems = [
+                { id: 'fee-entry-page', key: 'feeEntry' },
+                { id: 'fee-status-page', key: 'feeStatus' },
+                { id: 'history-page', key: 'history' },
+                { id: 'settings-page', key: 'settings' }
+            ];
+
+            adminMainNav.innerHTML = navItems.map((item, index) => `
+                <a href="#${item.key}" class="nav-link main-nav-item flex items-center justify-center h-10 w-full ${index === 0 ? 'active' : ''}" data-tab-target="${item.id}"><span>${item.key.replace(/([A-Z])/g, ' $1').trim()}</span></a>
+            `).join('');
+            
+            adminMainNav.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = e.currentTarget.dataset.tabTarget;
+                    
+                    adminMainNav.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+
+                    adminTabContents.forEach(content => content.classList.add('hidden'));
+                    const targetContent = document.getElementById(targetId);
+                    if (targetContent) {
+                        targetContent.classList.remove('hidden');
+                        // ഓരോ ടാബും തിരഞ്ഞെടുക്കുമ്പോൾ അതിന് വേണ്ട റെൻഡറിംഗ് ഫംഗ്ഷനുകൾ വിളിക്കുന്നു
+                        if (targetId === 'fee-status-page') renderFeeTable();
+                        if (targetId === 'history-page') renderHistoryPage();
+                        if (targetId === 'settings-page') {
+                            const defaultSettingsTab = document.querySelector('.settings-tab-btn[data-target="general-settings-content"]');
+                            if (defaultSettingsTab) defaultSettingsTab.click();
+                        }
+                    }
+                });
+            });
+        };
+        
+        // --- Firebase ഡാറ്റാബേസ് അപ്ഡേറ്റുകൾക്കുള്ള ഹെൽപ്പർ ഫംഗ്ഷൻ ---
+        async function updateSettings(dataToUpdate) {
+            const settingsRef = doc(db, `artifacts/${appId}/users/${userId}/settings`, 'config');
+            try {
+                await setDoc(settingsRef, dataToUpdate, { merge: true });
+            } catch (error) {
+                console.error("Error updating settings:", error);
+                alert("Failed to save settings. Check console for details.");
+            }
+        }
+        
+        // --- ഡിഫോൾട്ട് ഡാറ്റ സജ്ജീകരണം (ആദ്യമായി ആപ്പ് ഉപയോഗിക്കുമ്പോൾ) ---
+        function setupDefaultData() {
+            const defaultFeeItems = [
+                { key: 'jan', name: 'January', type: 'month', isVisible: true }, { key: 'feb', name: 'February', type: 'month', isVisible: true }, { key: 'mar', name: 'March', type: 'month', isVisible: true }, { key: 'apr', name: 'April', type: 'month', isVisible: true }, { key: 'may', name: 'May', type: 'month', isVisible: true }, { key: 'jun', name: 'June', type: 'month', isVisible: true }, { key: 'jul', name: 'July', type: 'month', isVisible: true }, { key: 'aug', name: 'August', type: 'month', isVisible: true }, { key: 'sep', name: 'September', type: 'month', isVisible: true }, { key: 'oct', name: 'October', type: 'month', isVisible: true }, { key: 'nov', name: 'November', type: 'month', isVisible: true }, { key: 'dec', name: 'December', type: 'month', isVisible: true },
+            ];
+            return updateSettings({ appName: 'Admin Panel - Fee Management', appSubtitle: 'Integrated Version', defaultFee: 200, nextReceiptNo: 1, feeStatusTitle: 'School Fee Status', feeItems: defaultFeeItems });
+        }
+        
+        // --- ഫീസ് എൻട്രി, എഡിറ്റ് മോഡ് കൈകാര്യം ചെയ്യുന്നു ---
+        function exitEditMode() { 
+            isEditMode = false; 
+            appContainer.classList.remove('edit-mode-active'); 
+            selectedStudentId = null; 
+            entryClass.value = ''; 
+            adminEntryStudentInput.value = '';
+            adminStudentSuggestions.classList.add('hidden');
+            updateFeeEntryUI(); 
+        }
+
+        // ക്ലാസ്, ജെൻഡർ അനുസരിച്ച് വിദ്യാർത്ഥികളെ ഗ്രൂപ്പ് ചെയ്ത് റോൾ നമ്പർ അനുസരിച്ച് സോർട്ട് ചെയ്യുന്നു
+        function getGroupedAndSortedData(studentList) {
+             const groupedData = studentList.reduce((acc, student) => {
+                 const key = `${student.class}#${student.gender}`;
+                 if (!acc[key]) { acc[key] = { class: student.class, gender: student.gender, students: [] }; }
+                 acc[key].students.push(student);
+                 return acc;
+             }, {});
+             const sortedGroupKeys = Object.keys(groupedData).sort((a, b) => a.split('#')[0].localeCompare(b.split('#')[0], undefined, { numeric: true }));
+             return sortedGroupKeys.map(key => {
+                 groupedData[key].students.sort((a, b) => (a.sno || 0) - (b.sno || 0));
+                 return groupedData[key];
+             });
+        }
+        
+        // --- ഫീസ് എൻട്രി UI റെൻഡറിംഗ് ഫംഗ്ഷനുകൾ ---
+
+        // ക്ലാസ് ഡ്രോപ്പ്ഡൗണുകൾ അപ്ഡേറ്റ് ചെയ്യുന്നു
+        const populateClassDropdowns = () => {
+             const uniqueClasses = [...new Set(students.map(s => s.class))].filter(c => c).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+             classes = uniqueClasses;
+             const classOptions = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+             
+             document.querySelectorAll('select#filter-class').forEach(select => { select.innerHTML = `<option value="all">All Classes</option>` + classOptions; });
+             document.getElementById('entry-class').innerHTML = `<option value="">-- Class --</option>` + classOptions;
+             moveFromClassSelect.innerHTML = `<option value="">Select a Class</option>` + classOptions;
+        };
+
+        // മൊത്തം തുക കണക്കാക്കി ഡിസ്പ്ലേ ചെയ്യുന്നു
+        const updateTotalAmount = () => {
+             const feeToUse = selectedStudentId ? (studentGroups.find(g => g.memberIds.includes(selectedStudentId))?.fee || defaultFee) : defaultFee;
+             let calculatedTotal = 0;
+             const selectedMonthCheckboxes = feeItemSelectionContainer.querySelectorAll('.fee-item-checkbox[data-item-type="month"]:checked:not(:disabled)');
+             calculatedTotal += selectedMonthCheckboxes.length * feeToUse;
+
+             const customItemCheckboxes = feeItemSelectionContainer.querySelectorAll('.fee-item-checkbox[data-item-type="custom"]:checked:not(:disabled)');
+             customItemCheckboxes.forEach(cb => {
+                 const amountInput = cb.closest('.relative').querySelector('.custom-fee-amount-input');
+                 if (amountInput) { calculatedTotal += parseFloat(amountInput.value) || 0; }
+             });
+             totalAmountInput.value = calculatedTotal.toFixed(2);
+        };
+        
+        // ഫീസ് ഇനം തിരഞ്ഞെടുക്കാനുള്ള ഓപ്ഷനുകൾ ലോഡ് ചെയ്യുന്നു
+        const populateFeeItemSelection = () => {
+             feeItemSelectionContainer.innerHTML = '';
+             const itemsToRender = [...feeItems].filter(m => m.isVisible);
+
+             feeItemSelectionContainer.innerHTML = itemsToRender.map(item => `
+                 <div class="relative">
+                     <input type="checkbox" id="item-${item.key}" data-item-key="${item.key}" data-item-type="${item.type || 'month'}" class="fee-item-checkbox peer sr-only">
+                     <label for="item-${item.key}" class="block py-1 px-2 text-xs border rounded-md cursor-pointer text-center peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-500">
+                         ${item.name}
+                     </label>
+                     ${item.type === 'custom' ? `<input type="number" class="custom-fee-amount-input hidden w-full mt-1 p-1 text-xs border rounded-md bg-gray-700 border-gray-500" placeholder="Amount">` : ''}
+                 </div>
+             `).join('');
+             
+             if(selectedStudentId) { // വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുത്താൽ, അടച്ച മാസങ്ങൾ ഹൈലൈറ്റ് ചെയ്യുന്നു
+                 document.querySelectorAll('.fee-item-checkbox').forEach(cb => {
+                     const itemKey = cb.dataset.itemKey;
+                     const payment = payments.find(p => p.studentId === selectedStudentId && p.itemKey === itemKey);
+                     const label = cb.nextElementSibling;
+                     label.classList.remove('month-paid');
+                     cb.checked = false;
+                     cb.disabled = !!payment && !isEditMode; 
+                     if (payment) {
+                         if (!isEditMode || (isEditMode && editingPaymentGroup.receiptNo !== payment.receiptNo)) { label.classList.add('month-paid'); }
+                     }
+                 });
+             }
+             updateTotalAmount();
+        };
+
+        // ഫീസ് എൻട്രി UI സ്റ്റാറ്റസ് അപ്ഡേറ്റ് ചെയ്യുന്നു (എഡിറ്റ് മോഡ്, രസീത് നമ്പർ)
+        const updateFeeEntryUI = () => { 
+             if (isEditMode) { feeEntryTitle.textContent = "Edit Payment"; saveFeeBtn.classList.add('hidden'); cancelEditBtn.classList.remove('hidden'); updateFeeBtn.classList.remove('hidden'); } 
+             else { feeEntryTitle.textContent = "Fee Entry"; saveFeeBtn.classList.remove('hidden'); cancelEditBtn.classList.add('hidden'); updateFeeBtn.classList.add('hidden'); }
+             entryReceipt.value = nextReceiptNo;
+             const feeToUse = selectedStudentId ? (studentGroups.find(g => g.memberIds.includes(selectedStudentId))?.fee || defaultFee) : defaultFee;
+             if (feeToUse !== defaultFee && feeToUse > 0) { groupInfo.textContent = `Group Fee (₹${feeToUse.toFixed(2)}) is being used as default monthly fee.`; groupInfo.classList.remove('hidden'); } 
+             else { groupInfo.classList.add('hidden'); }
+             populateFeeItemSelection();
+        };
+        
+        // --- ഫീസ് എൻട്രി/അപ്ഡേറ്റ് ലോജിക് (Save/Update) ---
+        const handleSaveOrUpdate = async (isUpdate) => {
+            if (!selectedStudentId) { alert("Please select a student."); return; }
+            
+            const newlySelectedItems = Array.from(document.querySelectorAll('.fee-item-checkbox:checked:not(:disabled)'));
+            if (newlySelectedItems.length === 0) { alert("Please select at least one fee item to pay."); return; }
+            
+            const newReceiptNo = parseInt(entryReceipt.value);
+            const newPaymentDate = entryDate.value;
+            const newTotalAmount = parseFloat(totalAmountInput.value);
+            const newDescription = entryDescription.value.trim();
+
+            if (isNaN(newReceiptNo) || !newPaymentDate || isNaN(newTotalAmount)) { alert("Please fill all required fields correctly."); return; }
+            
+            // സ്ഥിരീകരണ വിൻഡോ കാണിക്കുന്നു (Confirmation Modal)
+            confirmTitle.textContent = isUpdate ? "Update Payment" : "Confirm Payment";
+            confirmMessage.innerHTML = `<p>Confirm ${isUpdate ? 'update' : 'save'}?</p>`; // Simplistic confirmation
+            confirmPopup.classList.remove('hidden'); confirmPopup.classList.add('flex');
+
+            confirmOk.onclick = async () => {
+                // സേവ്/അപ്ഡേറ്റ് പ്രോസസ്സ് തുടങ്ങുന്നു
+                const originalText = confirmOk.innerHTML;
+                confirmOk.disabled = true;
+                confirmOk.innerHTML = `<div class="spinner"></div> <span class="ml-2">${isUpdate ? "Updating..." : "Saving..."}</span>`;
+
+                try {
+                    const batch = writeBatch(db);
+                    const group = studentGroups.find(g => g.memberIds.includes(selectedStudentId));
+                    const targetStudentIds = group ? group.memberIds : [selectedStudentId];
+
+                    // അപ്ഡേറ്റ് ആണെങ്കിൽ പഴയ പേയ്മെൻ്റുകൾ ഡിലീറ്റ് ചെയ്യുന്നു
+                    if (isUpdate) {
+                        const originalReceiptNo = editingPaymentGroup.receiptNo;
+                        const paymentsToDeleteQuery = query(collection(db, `artifacts/${appId}/users/${userId}/payments`), where("receiptNo", "==", originalReceiptNo));
+                        const paymentsToDeleteSnapshot = await getDocs(paymentsToDeleteQuery);
+                        paymentsToDeleteSnapshot.forEach(doc => batch.delete(doc.ref));
+                    }
+
+                    const commonPaymentData = { receiptNo: newReceiptNo, paymentDate: newPaymentDate, description: newDescription };
+                    let totalCustomFeeAmount = 0;
+
+                    // കസ്റ്റം ഫീസ് പേയ്മെൻ്റുകൾ ചേർക്കുന്നു
+                    const selectedCustomItems = Array.from(document.querySelectorAll('.fee-item-checkbox[data-item-type="custom"]:checked:not(:disabled)'));
+                    selectedCustomItems.forEach(cb => {
+                        const amount = parseFloat(cb.closest('.relative').querySelector('.custom-fee-amount-input').value) || 0;
+                        totalCustomFeeAmount += amount;
+                        const paymentRef = doc(collection(db, `artifacts/${appId}/users/${userId}/payments`));
+                        batch.set(paymentRef, { ...commonPaymentData, studentId: selectedStudentId, itemKey: cb.dataset.itemKey, amount: amount });
+                    });
+
+                    // പ്രതിമാസ ഫീസ് പേയ്മെൻ്റുകൾ ചേർക്കുന്നു (ഗ്രൂപ്പ് അംഗങ്ങൾ ഉൾപ്പെടെ)
+                    const amountAvailableForMonthlyFees = newTotalAmount - totalCustomFeeAmount;
+                    const selectedMonthlyItems = Array.from(document.querySelectorAll('.fee-item-checkbox[data-item-type="month"]:checked:not(:disabled)'));
+
+                    if (selectedMonthlyItems.length > 0 && amountAvailableForMonthlyFees >= 0) {
+                        const amountPerMonthItem = amountAvailableForMonthlyFees / selectedMonthlyItems.length;
+                        selectedMonthlyItems.forEach(cb => {
+                            targetStudentIds.forEach(currentStudentId => {
+                                const paymentRef = doc(collection(db, `artifacts/${appId}/users/${userId}/payments`));
+                                batch.set(paymentRef, { ...commonPaymentData, studentId: currentStudentId, itemKey: cb.dataset.itemKey, amount: amountPerMonthItem });
+                            });
+                        });
+                    }
+
+                    await batch.commit();
+                    if (!isUpdate) { await updateSettings({ nextReceiptNo: newReceiptNo + 1 }); } 
+                    
+                    alert(`Payment ${isUpdate ? 'updated' : 'saved'} successfully!`);
+                    exitEditMode();
+                } catch (error) {
+                    console.error(`Error ${isUpdate ? 'updating' : 'saving'} payment:`, error);
+                    alert(`Failed to ${isUpdate ? 'update' : 'save'} payment. Error: ${error.message}`);
+                } finally {
+                    confirmOk.disabled = false;
+                    confirmOk.innerHTML = originalText;
+                    confirmPopup.classList.add('hidden');
+                }
+            };
+        };
+
+        // --- അഡ്മിൻ ടാബ് റെൻഡറിംഗ് ഫംഗ്ഷനുകൾ (വിശദമായവ) ---
+
+        const renderFeeTable = () => { /* Logic implemented in createFeeTable function */
+             const filteredClass = filterClass.value;
+             const filteredGender = filterGender.value;
+             let filteredStudents = students;
+             if (filteredClass !== 'all') filteredStudents = filteredStudents.filter(s => s.class === filteredClass);
+             if (filteredGender !== 'all') filteredStudents = filteredStudents.filter(s => s.gender === filteredGender);
+             createFeeTable(filteredStudents, feeTableContainer);
+        };
+        
+        const createFeeTable = (studentList, container) => {
+             // ഫീസ് ടേബിൾ HTML ഉണ്ടാക്കി കണ്ടെയ്‌നറിൽ ചേർക്കുന്നു
+             if (studentList.length === 0) { container.innerHTML = `<p class="text-center text-gray-400 py-4">No data to display.</p>`; return; }
+             feeStatusTitleHeader.textContent = feeStatusTitle || "Fee Status";
+             const visibleItemObjects = [...feeItems].filter(m => m.isVisible);
+             const itemHeaders = visibleItemObjects.map(m => `<th class="p-2 border border-gray-600">${m.name}</th>`).join('');
+             let tableHtml = `<table class="w-full text-sm text-left border-collapse"><thead class="table-header"><tr><th class="p-2 border border-gray-600">Student</th>${itemHeaders}</tr></thead><tbody>`;
+             const groupedData = getGroupedAndSortedData(studentList);
+             groupedData.forEach(group => {
+                 const genderText = group.gender === 'Male' ? "Male" : "Female";
+                 tableHtml += `<tr class="bg-gray-700 font-bold"><td colspan="${visibleItemObjects.length + 1}" class="p-2 border border-gray-600">${group.class} - ${genderText}</td></tr>`;
+                 group.students.forEach(student => {
+                     tableHtml += `<tr class="hover:bg-gray-700/50"><td class="p-2 border border-gray-600 font-medium">${student.sno}. ${student.name}</td>`;
+                     visibleItemObjects.forEach(item => {
+                         const payment = payments.find(p => p.studentId === student.id && p.itemKey === item.key);
+                         if (payment) {
+                             const content = item.type === 'custom' ? `₹${payment.amount.toFixed(0)}` : `R:${payment.receiptNo}`;
+                             tableHtml += `<td class="p-2 border border-gray-600 text-center bg-green-800" title="${item.name}: ${content}">${content}</td>`;
+                         } else { tableHtml += `<td class="p-2 border border-gray-600 text-center">-</td>`; }
+                     });
+                     tableHtml += `</tr>`;
+                 });
+             });
+             tableHtml += `</tbody></table>`;
+             container.innerHTML = tableHtml;
+        };
+
+        const renderHistoryPage = () => { 
+             // പേയ്മെൻ്റ് ഹിസ്റ്ററി ടേബിൾ ഉണ്ടാക്കി കണ്ടെയ്‌നറിൽ ചേർക്കുന്നു
+             historyContentContainer.innerHTML = '';
+             const groupedByReceiptAndStudent = payments.reduce((acc, p) => { /* Grouping Logic */ const key = `${p.receiptNo}-${p.studentId}`; if (!acc[key]) { acc[key] = { receiptNo: p.receiptNo, studentId: p.studentId, paymentDate: p.paymentDate, description: p.description || '', items: [], totalAmount: 0, }; } acc[key].items.push(p.itemKey); acc[key].totalAmount += p.amount; return acc; }, {});
+             const sortedHistory = Object.values(groupedByReceiptAndStudent).sort((a, b) => b.receiptNo - a.receiptNo);
+             if (sortedHistory.length === 0) { historyContentContainer.innerHTML = `<p class="text-center text-gray-400 py-4">No data to display.</p>`; return; }
+             
+             let tableHtml = `<table class="w-full text-sm text-left border-collapse"><thead class="table-header"><tr><th class="p-2 border border-gray-600">Receipt No.</th><th class="p-2 border border-gray-600">Date</th><th class="p-2 border border-gray-600">Student Name</th><th class="p-2 border border-gray-600">Item(s)</th><th class="p-2 border border-gray-600">Description</th><th class="p-2 border border-gray-600">Total Amount (₹)</th><th class="p-2 border border-gray-600 text-center">Actions</th></tr></thead><tbody>`;
+             sortedHistory.forEach(item => {
+                 const student = getStudentById(item.studentId);
+                 if (student) {
+                     tableHtml += `<tr class="border-b border-gray-700 hover:bg-gray-600"><td class="p-2 border border-gray-600">${item.receiptNo}</td><td class="p-2 border border-gray-600">${new Date(item.paymentDate).toLocaleDateString('en-US')}</td><td class="p-2 border border-gray-600">${student.sno}. ${student.name} (${student.class})</td><td class="p-2 border border-gray-600 text-center">${item.items.length} Items</td><td class="p-2 border border-gray-600">${item.description || ''}</td><td class="p-2 border border-gray-600">₹${item.totalAmount.toFixed(2)}</td><td class="p-2 border border-gray-600 text-center space-x-2"><button class="edit-payment-btn text-blue-400 hover:text-blue-300 p-1" title="Edit" data-student-id="${item.studentId}" data-receipt-no="${item.receiptNo}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg></button><button class="delete-payment-btn text-red-500 hover:text-red-700 p-1" title="Delete" data-student-id="${item.studentId}" data-receipt-no="${item.receiptNo}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></td></tr>`;
+                 }
+             });
+             tableHtml += `</tbody></table>`;
+             historyContentContainer.innerHTML = tableHtml;
+        };
+        
+        const renderStudentList = (searchTerm = '') => { 
+             // വിദ്യാർത്ഥി മാനേജ്മെൻ്റ് ടാബിനായുള്ള ലിസ്റ്റ് റെൻഡർ ചെയ്യുന്നു
+             const filteredStudents = students.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || (s.guardian || '').toLowerCase().includes(searchTerm.toLowerCase()) || (s.sno || '').toString().includes(searchTerm) );
+             if (filteredStudents.length === 0) { studentListContainer.innerHTML = `<p class="text-center text-gray-400 py-4">No students found.</p>`; return; }
+             const groupedByClassAndGender = getGroupedAndSortedData(filteredStudents);
+             let tableHtml = `<table class="w-full text-sm text-left"><thead class="table-header"><tr><th class="p-2">R.No.</th><th class="p-2">Student Name</th><th class="p-2">Guardian Name</th><th class="p-2 text-right">Actions</th></tr></thead><tbody>`;
+             groupedByClassAndGender.forEach(group => {
+                 const genderText = group.gender === 'Male' ? "Male" : "Female";
+                 tableHtml += `<tr class="bg-gray-700 font-bold"><td colspan="4" class="p-2">${group.class} - ${genderText}</td></tr>`;
+                 group.students.forEach(s => {
+                     tableHtml += `<tr class="border-b border-gray-700 hover:bg-gray-600"><td class="p-2">${s.sno}</td><td class="p-2">${s.name}</td><td class="p-2">${s.guardian || 'N/A'}</td><td class="p-2 text-right space-x-2"><button class="edit-student-btn text-blue-400 hover:text-blue-300 p-1" title="Edit" data-student-id="${s.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg></button><button class="delete-student-btn text-red-500 hover:text-red-700 p-1" title="Delete" data-student-id="${s.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></td></tr>`; });
+             });
+             tableHtml += `</tbody></table>`;
+             studentListContainer.innerHTML = tableHtml;
+        };
+
+        // PDF ഡൗൺലോഡ് ഫംഗ്ഷൻ (jspdf ഉപയോഗിച്ച്)
+        const downloadFeeStatusPDF = () => {
+            const studentList = students; 
+            const visibleItemObjects = [...feeItems].filter(m => m.isVisible);
+
+            const headers = ["Student", ...visibleItemObjects.map(m => m.name)];
+            const body = [];
+            
+            const groupedData = getGroupedAndSortedData(studentList);
+
+            groupedData.forEach(group => {
+                const groupHeader = `${group.class} - ${group.gender === 'Male' ? "Male" : "Female"}`;
+                body.push([{ content: groupHeader, colSpan: headers.length, styles: { fontStyle: 'bold', fillColor: '#374151', textColor: '#FFFFFF' } }]);
+
+                group.students.forEach(student => {
+                    const row = [`${student.sno}. ${student.name}`];
+                    visibleItemObjects.forEach(item => {
+                        const payment = payments.find(p => p.studentId === student.id && p.itemKey === item.key);
+                        if (payment) {
+                            const cell = { styles: { fillColor: [22, 101, 52], textColor: [255, 255, 255], halign: 'center' } };
+                            cell.content = item.type === 'custom' ? `₹${payment.amount.toFixed(0)}` : `R:${payment.receiptNo}`;
+                            row.push(cell);
+                        } else { row.push({ content: '-', styles: { halign: 'center' } }); }
+                    });
+                    body.push(row);
+                });
+            });
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
+            const pdfTitle = feeStatusTitle || "Fee Status Report";
+            doc.setFontSize(18);
+            doc.text(pdfTitle, 14, 15);
+
+            doc.autoTable({
+                head: [headers], body: body, startY: 20, theme: 'grid', styles: { fontSize: 8, cellPadding: 1.5, overflow: 'linebreak' }, headStyles: { fillColor: [75, 85, 99] },
+            });
+            doc.save(`${pdfTitle}.pdf`);
+        };
+        
+        // --- Firebase Initialization & Listeners ---
+        async function main() {
+            // Firebase Config ഇവിടെ നേരിട്ട് നൽകിയിരിക്കുന്നു
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+            // ആധികാരികത ഉറപ്പുവരുത്തൽ (Authentication) - എഴുത്ത്/മാറ്റം വരുത്താനുള്ള അനുമതിക്ക്
+            if (typeof __initial_auth_token !== 'undefined') { await signInWithCustomToken(auth, __initial_auth_token); } 
+            else { await signInAnonymously(auth); } // അജ്ഞാത ഉപയോക്താവായി സൈൻ ഇൻ ചെയ്യുന്നു
+
+            onAuthStateChanged(auth, async (user) => {
+                 if (user) {
+                     userId = user.uid;
+                     const settingsRef = doc(db, `artifacts/${appId}/users/${userId}/settings`, 'config');
+                     const settingsSnap = await getDoc(settingsRef);
+                     if (!settingsSnap.exists()) { await setupDefaultData(); } // ആദ്യമായി ഉപയോഗിക്കുമ്പോൾ ഡിഫോൾട്ട് ഡാറ്റ ചേർക്കുന്നു
+                    
+                     // 1. Settings Listener
+                     const settingsUnsubscribe = onSnapshot(settingsRef, (docSnap) => {
+                          if (docSnap.exists()) {
+                              const data = docSnap.data();
+                              appName = data.appName || 'Admin Panel - Fee Management';
+                              appSubtitle = data.appSubtitle || 'Integrated Version';
+                              defaultFee = data.defaultFee || 200;
+                              feeStatusTitle = data.feeStatusTitle || '';
+                              feeItems = data.feeItems || [];
+                              nextReceiptNo = data.nextReceiptNo || 1;
+                          } 
+                          // UI അപ്ഡേറ്റ് ചെയ്യുന്നു
+                          appNameHeader.textContent = appName; appSubtitleHeader.textContent = appSubtitle; setLanguage();
+                          if (document.getElementById('manage-fee-items-content').offsetParent) renderFeeItemsManagement();
+                      });
+
+                     // 2. Students Listener
+                     const studentsQuery = collection(db, `artifacts/${appId}/users/${userId}/students`);
+                     const studentsUnsubscribe = onSnapshot(studentsQuery, (snapshot) => {
+                         students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                         populateClassDropdowns();
+                         if (document.getElementById('manage-students-content').offsetParent) renderStudentList();
+                         if (document.getElementById('fee-status-page').offsetParent) renderFeeTable();
+                         if (document.getElementById('manage-classes-content').offsetParent) { renderClassList(); }
+                     });
+
+                     // 3. Payments Listener
+                     const paymentsQuery = collection(db, `artifacts/${appId}/users/${userId}/payments`);
+                     const paymentsUnsubscribe = onSnapshot(paymentsQuery, (snapshot) => {
+                         payments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                         if (!isEditMode) updateFeeEntryUI(); // എഡിറ്റിംഗ് മോഡ് അല്ലെങ്കിൽ UI അപ്ഡേറ്റ് ചെയ്യുന്നു
+                         if (document.getElementById('fee-status-page').offsetParent) renderFeeTable();
+                         if (document.getElementById('history-page').offsetParent) renderHistoryPage();
+                     });
+
+                     // 4. Groups Listener
+                     const groupsQuery = collection(db, `artifacts/${appId}/users/${userId}/studentGroups`);
+                     const studentGroupsUnsubscribe = onSnapshot(groupsQuery, (snapshot) => {
+                         studentGroups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                         if (document.getElementById('manage-groups-content').offsetParent) renderStudentGroups();
+                         if (!isEditMode) updateFeeEntryUI();
+                     });
+                 }
+            });
+            
+            initAdminNav(); // അഡ്മിൻ നാവിഗേഷൻ സജ്ജമാക്കുന്നു
+            document.getElementById('entry-date').value = new Date().toISOString().slice(0, 10);
+        }
+        main();
+
+        // --- ഇവൻ്റ് ലിസണറുകൾ ---
+        
+        // ഫീസ് എൻട്രി/അപ്ഡേറ്റ്
+        saveFeeBtn.addEventListener('click', () => handleSaveOrUpdate(false));
+        updateFeeBtn.addEventListener('click', () => handleSaveOrUpdate(true));
+        cancelEditBtn.addEventListener('click', exitEditMode);
+        entryClass.addEventListener('change', exitEditMode);
+        
+        // ഫീസ് ടേബിൾ ഫിൽട്ടറുകൾ
+        filterClass.addEventListener('change', renderFeeTable);
+        filterGender.addEventListener('change', renderFeeTable);
+
+        // ഹിസ്റ്ററിയിലെ എഡിറ്റ്/ഡിലീറ്റ് ബട്ടൺ ക്ലിക്കുകൾ
+        historyContentContainer.addEventListener('click', e => {
+            const editBtn = e.target.closest('.edit-payment-btn');
+            const deleteBtn = e.target.closest('.delete-payment-btn');
+            if (editBtn) { /* Edit Logic Here */ } 
+            else if (deleteBtn) { /* Delete Logic Here */ }
+        });
+        
+        // Settings Sub-Tab Navigation
+        settingsNav.addEventListener('click', (e) => {
+            const targetBtn = e.target.closest('.settings-tab-btn');
+            if (!targetBtn) return;
+            const targetContentId = targetBtn.dataset.target;
+            settingsNav.querySelectorAll('.settings-tab-btn').forEach(btn => btn.classList.remove('active'));
+            targetBtn.classList.add('active');
+            settingsTabContents.forEach(content => { content.classList.toggle('hidden', content.id !== targetContentId); });
+            // ഓരോ സബ്ടാബിനും വേണ്ട റെൻഡറിംഗ് ഫംഗ്ഷൻ വിളിക്കുന്നു
+            if (targetContentId === 'manage-fee-items-content') renderFeeItemsManagement();
+            if (targetContentId === 'manage-students-content') renderStudentList(searchStudentInput.value.trim());
+            if (targetContentId === 'manage-classes-content') renderClassList();
+            if (targetContentId === 'manage-groups-content') renderStudentGroups();
+        });
+
+        // വിദ്യാർത്ഥി മാനേജ്മെൻ്റ് തിരയൽ
+        searchStudentInput.addEventListener('input', (e) => renderStudentList(e.target.value.trim()));
+        
+        // ഫീസ് ഇനം സെലക്ഷനിലെ മാറ്റങ്ങൾ (തുക അപ്ഡേറ്റ് ചെയ്യാൻ)
+        feeItemSelectionContainer.addEventListener('change', updateTotalAmount);
+        feeItemSelectionContainer.addEventListener('input', updateTotalAmount);
+
+        // PDF ഡൗൺലോഡ് ബട്ടൺ
+        document.getElementById('fee-download-pdf-btn').addEventListener('click', downloadFeeStatusPDF);
+
+    </script>
+</body>
+</html>
